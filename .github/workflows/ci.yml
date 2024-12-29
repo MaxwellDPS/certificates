@@ -2,10 +2,10 @@ name: CI
 
 on:
   push:
-    tags-ignore:
-    - 'v*'
-    branches:
-    - "master"
+    # tags-ignore:
+    # - 'v*'
+    # branches:
+    # - "master"
   pull_request:
   workflow_call:
     secrets:
@@ -18,10 +18,13 @@ concurrency:
 
 jobs:
   ci:
-    uses: smallstep/workflows/.github/workflows/goCI.yml@main
+    uses: .github/workflows/docker-buildx-push.yml
+    permissions:
+      id-token: write
+      contents: write
     with:
-      only-latest-golang: false
-      os-dependencies: 'libpcsclite-dev'
-      run-codeql: true
-      test-command: 'V=1 make test'
+      platforms: linux/amd64,linux/386,linux/arm,linux/arm64
+      tags: ${{ needs.create_release.outputs.docker_tags }}
+      docker_image: maxwelldps/step-ca
+      docker_file: docker/Dockerfile
     secrets: inherit

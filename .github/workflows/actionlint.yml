@@ -13,5 +13,5 @@ permissions:
 
 jobs:
   actionlint:
-    uses: smallstep/workflows/.github/workflows/actionlint.yml@main
+    uses: maxwelldps/workflows/.github/workflows/actionlint.yml@main
     secrets: inherit

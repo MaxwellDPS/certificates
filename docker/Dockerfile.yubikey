@@ -1,0 +1,70 @@
+FROM --platform=$BUILDPLATFORM golang:alpine AS builder
+
+ARG STEP_CLI_VER=0.28.2
+
+RUN apk add --no-cache make git curl
+
+WORKDIR /src/cli
+
+RUN curl -LO https://github.com/smallstep/cli/archive/refs/tags/v${STEP_CLI_VER}.tar.gz
+RUN tar -xzf v${STEP_CLI_VER}.tar.gz -C . \
+    && rm v${STEP_CLI_VER}.tar.gz 
+RUN cd cli-${STEP_CLI_VER} && go mod download 
+
+
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg \
+    GOOS="${TARGETOS}"; \
+    GOARCH="${TARGETARCH}"; \
+    if [ "${TARGETARCH}" = "arm" ] && [ "${TARGETVARIANT}" ]; then \
+    GOARM="${TARGETVARIANT#v}"; \
+    fi; \
+    CGO_ENABLED=0 GOOS_OVERRIDE="GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM}" \
+    cd cli-${STEP_CLI_VER} && make V=1 bin/step && cp bin/step /src/cli/step
+
+
+FROM golang:alpine
+
+ENV STEP="/home/step"
+ENV STEPPATH="/home/step"
+ARG STEPUID=1000
+ARG STEPGID=1000
+ARG STEP_CA_VER=0.28.1
+
+RUN apk update \
+        && apk upgrade \
+        && apk add --no-cache bash curl tzdata make libcap pkgconfig gcc pcsc-lite-dev musl-dev \
+        && addgroup -g ${STEPGID} step \
+        && adduser -D -u ${STEPUID} -G step step \
+        && chown step:step /home/step
+
+COPY --from=builder /src/cli/step "/usr/local/bin/step"
+
+WORKDIR /src
+COPY . .
+
+
+RUN make bootstrap
+RUN make build GO_ENVS="CGO_ENABLED=1"
+RUN install bin/step-ca /usr/local/bin/step-ca 
+RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/step-ca
+
+USER step
+
+ENV CONFIGPATH="/home/step/config/ca.json"
+ENV PWDPATH="/home/step/secrets/password"
+
+VOLUME ["/home/step"]
+STOPSIGNAL SIGTERM
+HEALTHCHECK CMD step ca health 2>/dev/null | grep "^ok" >/dev/null
+
+COPY docker/entrypoint.sh /entrypoint.sh
+
+RUN step-ca version
+
+ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
+CMD exec /usr/local/bin/step-ca --password-file $PWDPATH $CONFIGPATH
+
