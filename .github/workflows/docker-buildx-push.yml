@@ -1,38 +1,12 @@
 name: Docker Build and Push
 
 on:
-  workflow_call:
-    secrets:
-      DOCKER_USERNAME:
-        required: true
-      DOCKER_PASSWORD:
-        required: true
-    inputs:
-      platforms:
-        required: true
-        type: string
-      tags:
-        required: true
-        type: string
-      docker_image:
-        required: true
-        type: string
-      docker_file:
-        required: false
-        type: string
-        default: Dockerfile.yubikey
-      docker_build_args:
-        required: false
-        type: string
-      runs_on:
-        required: false
-        type: string
-        default: 'ubuntu-latest'
+  push:
 
 jobs:
   build_upload_docker:
     name: Build & Upload Docker Images
-    runs-on: ${{ inputs.runs_on }}
+    runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: write
@@ -60,12 +34,12 @@ jobs:
         uses: docker/build-push-action
         with:
           context: .
-          file: ${{ inputs.docker_file }}
+          file: Dockerfile.yubikey
           push: true
-          tags: ${{ inputs.tags }}
-          platforms: ${{ inputs.platforms }}
-          build-args: ${{ inputs.docker_build_args }}
+          tags: maxwelldps/step-ca:yubikey,maxwelldps/step-ca:${{ github.sha }}-yubikey
+          platforms: linux/amd64,linux/386,linux/arm,linux/arm64
+
       - name: Cosign
         id: cosign
         run: |
-          cosign sign -r ${{ inputs.docker_image }}@${{ steps.build-and-push.outputs.digest }} --yes
+          cosign sign -r maxwelldps/step-ca@${{ steps.build-and-push.outputs.digest }} --yes
