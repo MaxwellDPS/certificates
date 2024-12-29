@@ -25,10 +25,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Install cosign
-        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
-        with:
-          cosign-release: 'v2.2.4'
       - name: Build and push
         id: build-and-push
         uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
@@ -37,9 +33,5 @@ jobs:
           file: docker/Dockerfile.yubikey
           push: true
           tags: maxwelldps/step-ca:yubikey,maxwelldps/step-ca:${{ github.sha }}-yubikey
-          platforms: linux/amd64,linux/386,linux/arm,linux/arm64
-
-      - name: Cosign
-        id: cosign
-        run: |
-          cosign sign -r maxwelldps/step-ca@${{ steps.build-and-push.outputs.digest }} --yes
+          platforms: linux/amd64
+  
