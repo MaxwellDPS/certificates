@@ -18,13 +18,13 @@ concurrency:
 
 jobs:
   ci:
-    uses: .github/workflows/docker-buildx-push.yml
+    uses: ./.github/workflows/docker-buildx-push.yml
     permissions:
       id-token: write
       contents: write
     with:
       platforms: linux/amd64,linux/386,linux/arm,linux/arm64
-      tags: ${{ needs.create_release.outputs.docker_tags }}
+      tags: ${{ needs.create-release.outputs.docker_tags }}
       docker_image: maxwelldps/step-ca
       docker_file: docker/Dockerfile
     secrets: inherit
